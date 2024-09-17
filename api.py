@@ -133,7 +133,7 @@ def delete_message(id):
         404:
             description: Message not found.
     """
-    message = Message.query.get(id)
+    message = db.session.get(Message, id)
 
     if message is None:
         return jsonify({'error': 'Message not found'}), 404
