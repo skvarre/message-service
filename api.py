@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 
@@ -21,8 +21,23 @@ class Message(db.Model):
 # Send a message to a user
 @app.route('/messages', methods=['POST'])
 def send_message():
-    pass
+    data = request.get_json() 
+    print(data)
 
+    # Check if the required fields are present
+    if any(field not in data for field in ['sender', 'receiver', 'content']):
+            return jsonify({'error': 'Missing required fields'}), 400
+    
+    new_message = Message(
+        sender=data['sender'],
+        receiver=data['receiver'],
+        content=data['content']
+    )
+
+    db.session.add(new_message)
+    db.session.commit()
+
+    return jsonify({'message': f'Message sent successfully'}), 201
 
 # Get NEW messages
 @app.route('/messages/new', methods=['GET'])
