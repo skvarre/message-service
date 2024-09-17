@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+import json
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///messages.db'
@@ -22,7 +23,6 @@ class Message(db.Model):
 @app.route('/messages', methods=['POST'])
 def send_message():
     data = request.get_json() 
-    print(data)
 
     # Check if the required fields are present
     if any(field not in data for field in ['sender', 'receiver', 'content']):
@@ -37,12 +37,40 @@ def send_message():
     db.session.add(new_message)
     db.session.commit()
 
-    return jsonify({'message': f'Message sent successfully'}), 201
+    return jsonify({'message': 'Message sent successfully'}), 201
 
 # Get NEW messages
 @app.route('/messages/new', methods=['GET'])
 def fetch_new_messages():
-    pass
+    data = request.args
+
+    if 'receiver' not in data:
+        return jsonify({'error': 'Missing required fields'}), 400
+    
+    messages = Message.query.filter_by(receiver=data['receiver'], is_read=False).all()
+
+    # Seralize messages
+    messages_list = []
+
+    for message in messages:
+        messages_list.append({
+            'id': message.id,
+            'sender': message.sender,
+            'receiver': message.receiver,
+            'content': message.content,
+            'timestamp': message.timestamp,
+            # 'is_read': message.is_read -- Not really relevant for this endpoint
+        })
+
+    if messages_list == []:
+        return jsonify({'messages': f'No new messages for {data["receiver"]}'}), 200
+    
+    # Mark messages as read
+    for message in messages:
+        message.is_read = True
+        db.session.commit()
+    
+    return jsonify({'messages': messages_list}), 200
 
 # Delete message
 @app.route('/messages/<int:id>', methods=['DELETE'])
