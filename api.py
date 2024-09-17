@@ -10,27 +10,53 @@ db = SQLAlchemy(app)
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     sender = db.Column(db.String(100), nullable=False)
-    receiver = db.Column(db.String(100), nullable=False)
+    recipient = db.Column(db.String(100), nullable=False)
     content = db.Column(db.Text, nullable=False)
     timestamp = db.Column(db.DateTime, nullable=False, default=datetime.now())
     is_read = db.Column(db.Boolean, nullable=False, default=False)
 
     # For debugging purposes
     def __repr__(self):
-        return f'<Message(id={self.id}, sender={self.sender}, receiver={self.receiver}, content={self.content}, timestamp={self.timestamp}, is_read={self.is_read})>'
+        return f'<Message(id={self.id}, sender={self.sender}, recipient={self.recipient}, content={self.content}, timestamp={self.timestamp}, is_read={self.is_read})>'
 
 # Send a message to a user
 @app.route('/messages', methods=['POST'])
 def send_message():
+    """
+    Send a message to a user.
+    
+    ---
+    parameters:
+        - name: sender
+            in: body
+            type: string
+            required: true
+            description: The identifier of the sender user (username).
+        - name: recipient
+            in: body
+            type: string
+            required: true
+            description: The identifier of the recipient user (username).
+        - name: content
+            in: body
+            type: string
+            required: true
+            description: The content of the message.
+    responses:
+        201:
+            description: Message sent successfully.
+        400:
+            description: Missing required fields.
+    """
     data = request.get_json() 
 
     # Check if the required fields are present
-    if any(field not in data for field in ['sender', 'receiver', 'content']):
+    if any(field not in data for field in ['sender', 'recipient', 'content']):
             return jsonify({'error': 'Missing required fields'}), 400
     
     new_message = Message(
         sender=data['sender'],
-        receiver=data['receiver'],
+        recipient=data['recipient'],
         content=data['content']
     )
 
@@ -42,12 +68,30 @@ def send_message():
 # Get NEW messages
 @app.route('/messages/new', methods=['GET'])
 def fetch_new_messages():
+    """
+    Fetch new messages for a user.
+
+    ---
+    parameters:
+        - name: recipient
+            in: query
+            type: string
+            required: true
+            description: The identifier of the recipient user (username).
+    responses:
+        200:
+            description: A list of new unfetched messages for the recipient user.
+        400:
+            description: Missing required fields.
+        404:
+            description: No new messages found for the recipient user.
+    """
     data = request.args
 
-    if 'receiver' not in data:
+    if 'recipient' not in data:
         return jsonify({'error': 'Missing required fields'}), 400
     
-    messages = Message.query.filter_by(receiver=data['receiver'], is_read=False).all()
+    messages = Message.query.filter_by(recipient=data['recipient'], is_read=False).all()
 
     # Seralize messages
     messages_list = []
@@ -56,14 +100,14 @@ def fetch_new_messages():
         messages_list.append({
             'id': message.id,
             'sender': message.sender,
-            'receiver': message.receiver,
+            'recipient': message.recipient,
             'content': message.content,
             'timestamp': message.timestamp,
             # 'is_read': message.is_read -- Not really relevant for this endpoint
         })
 
     if messages_list == []:
-        return jsonify({'messages': f'No new messages for {data["receiver"]}'}), 200
+        return jsonify({'messages': f'No new messages found for {data["recipient"]}'}), 404
     
     # Mark messages as read
     for message in messages:
