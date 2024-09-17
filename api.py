@@ -80,11 +80,9 @@ def fetch_new_messages():
             description: The identifier of the recipient user (username).
     responses:
         200:
-            description: A list of new unfetched messages for the recipient user.
+            description: A list of new unfetched messages for the recipient user if existent.
         400:
             description: Missing required fields.
-        404:
-            description: No new messages found for the recipient user.
     """
     data = request.args
 
@@ -107,7 +105,7 @@ def fetch_new_messages():
         })
 
     if messages_list == []:
-        return jsonify({'error': f'No new messages found for {data["recipient"]}'}), 404
+        return jsonify({'messages': [], "info":f'No new messages found for {data["recipient"]}'}), 200
     
     # Mark messages as read
     for message in messages:
