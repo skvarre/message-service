@@ -107,7 +107,7 @@ def fetch_new_messages():
         })
 
     if messages_list == []:
-        return jsonify({'messages': f'No new messages found for {data["recipient"]}'}), 404
+        return jsonify({'error': f'No new messages found for {data["recipient"]}'}), 404
     
     # Mark messages as read
     for message in messages:
@@ -119,7 +119,31 @@ def fetch_new_messages():
 # Delete message
 @app.route('/messages/<int:id>', methods=['DELETE'])
 def delete_message(id):
-    pass
+    """
+    Delete a message by its ID.
+    
+    ---
+    parameters:
+        - name: id
+            in: path
+            type: integer
+            required: true
+            description: The identifier of the message to be deleted.
+    responses:
+        200:
+            description: Message deleted successfully.
+        404:
+            description: Message not found.
+    """
+    message = Message.query.get(id)
+
+    if message is None:
+        return jsonify({'error': 'Message not found'}), 404
+    
+    db.session.delete(message)
+    db.session.commit()
+
+    return jsonify({'message': 'Message deleted successfully'}), 200
 
 # Delete multiple messages
 @app.route('/messages', methods=['DELETE'])
