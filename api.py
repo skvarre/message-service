@@ -147,6 +147,24 @@ def delete_message(id):
 # Design choice: All messages must exist, or none will be deleted.
 @app.route('/messages', methods=['DELETE'])
 def delete_multiple_messages():
+    """
+    Delete multiple messages by their IDs.
+    
+    ---
+    parameters:
+        - name: ids
+            in: body
+            type: list
+            required: true
+            description: A list of message IDs to be deleted.
+    responses:
+        200:
+            description: Messages deleted successfully.
+        400:
+            description: Missing required fields.
+        404:
+            description: Message(s) not found.
+    """
     data = request.get_json()
 
     if 'ids' not in data or not data['ids']:
@@ -154,19 +172,15 @@ def delete_multiple_messages():
 
     ids = data['ids']
 
-    # TODO: Should be a way to batch delete messages
-    not_found_ids = []
-    for id in ids:
-        message = db.session.get(Message, id)
+    messages_to_delete = Message.query.filter(Message.id.in_(ids)).all()
+    found_ids = [message.id for message in messages_to_delete]
+    not_found_ids = list(set(ids) - set(found_ids))
 
-        if message is not None:
-            db.session.delete(message)
-            db.session.commit()
-        else: 
-            not_found_ids.append(id)
-    
     if not_found_ids:
         return jsonify({'error': f'Messages not found', 'not_found_ids':f'{not_found_ids}'}), 404
+    
+    Message.query.filter(Message.id.in_(ids)).delete(synchronize_session=False)
+    db.session.commit()
 
     return jsonify({'message': f'Successfully deleted all messages'}), 200
 
