@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
-import json
+from sqlalchemy import desc
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///messages.db'
@@ -18,6 +18,8 @@ class Message(db.Model):
     # For debugging purposes
     def __repr__(self):
         return f'<Message(id={self.id}, sender={self.sender}, recipient={self.recipient}, content={self.content}, timestamp={self.timestamp}, is_read={self.is_read})>'
+
+#TODO: Add try-except blocks in all endpoints to catch exceptions and return a 500 status code.
 
 # Send a message to a user
 @app.route('/messages', methods=['POST'])
@@ -92,19 +94,16 @@ def fetch_new_messages():
     messages = Message.query.filter_by(recipient=data['recipient'], is_read=False).all()
 
     # Seralize messages
-    messages_list = []
+    messages_list = [{
+        'id': message.id,
+        'sender': message.sender,
+        'recipient': message.recipient,
+        'content': message.content,
+        'timestamp': message.timestamp,
+        #'is_read': message.is_read -- Not really relevant for this endpoint
+    } for message in messages]
 
-    for message in messages:
-        messages_list.append({
-            'id': message.id,
-            'sender': message.sender,
-            'recipient': message.recipient,
-            'content': message.content,
-            'timestamp': message.timestamp,
-            # 'is_read': message.is_read -- Not really relevant for this endpoint
-        })
-
-    if messages_list == []:
+    if not messages_list:
         return jsonify({'messages': [], "info":f'No new messages found for {data["recipient"]}'}), 200
     
     # Mark messages as read
@@ -188,7 +187,60 @@ def delete_multiple_messages():
 # Get ALL messages.
 @app.route('/messages', methods=['GET'])
 def fetch_messages():
-    pass
+    """
+    Fetch multiple messages for a user.
+
+    ---
+    parameters:
+        - name: recipient
+            in: query
+            type: string
+            required: true
+            description: The identifier of the recipient user (username).
+        - name: start_index
+            in: query
+            type: integer
+            required: false
+            description: The start index of the messages to fetch.
+        - name: stop_index
+            in: query
+            type: integer
+            required: false
+            description: The stop index of the messages to fetch.
+    responses:
+        200:
+            description: A list of messages for the recipient user (if existent).
+        400:
+            description: Missing required fields.
+    """
+    recipient = request.args.get('recipient')
+    start_index = request.args.get('start_index', default=0, type=int)
+    stop_index = request.args.get('stop_index', default=50, type=int)
+
+    # Validate input
+    if recipient is None:
+        return jsonify({'error': 'Missing recipient parameter'}), 400
+    if start_index < 0 or stop_index < 0:
+        return jsonify({'error': 'Indexes must be positive integers'}), 400
+    if start_index > stop_index:
+        return jsonify({'error': 'Start index must be less than stop index'}), 400
+    
+    query = Message.query.filter_by(recipient=recipient).order_by(desc(Message.timestamp))
+    messages = query.slice(start_index, stop_index).all()
+
+    messages_list = [{
+        'id': message.id,
+        'sender': message.sender,
+        'recipient': message.recipient,
+        'content': message.content,
+        'timestamp': message.timestamp,
+    } for message in messages]
+
+    return jsonify({'messages': messages_list,
+                    'total_messages': query.count(),
+                    'start_index': start_index,
+                    'stop_index': stop_index
+                }), 200
 
 
 if __name__ == '__main__':

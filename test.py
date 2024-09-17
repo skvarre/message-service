@@ -14,7 +14,7 @@ def client():
 def test_fetch_new_messages(client):
     response = client.get('/messages/new?recipient=leifgw')
     assert response.status_code == 200
-    assert response.json['messages'] == []
+    assert not response.json['messages']
 
 def test_fetch_new_messages_missing_recipient(client):
     response = client.get('/messages/new')
@@ -45,7 +45,7 @@ def test_delete_message(client):
 
     response = client.get('/messages/new?recipient=kungen')
     assert response.status_code == 200
-    assert response.json['messages'] == []
+    assert not response.json['messages']
 
 def test_delete_message_not_found(client):
     response = client.delete('/messages/1')
@@ -74,3 +74,40 @@ def test_delete_multiple_partly_missing_ids(client):
     assert response.status_code == 404
     assert response.json['error'] == 'Messages not found'
     assert response.json['not_found_ids'] == '[3]'
+
+def test_fetch_messages_no_messages(client):
+    response = client.get('/messages?recipient=leifgw')
+    assert response.status_code == 200
+    assert not response.json['messages']
+
+def test_fetch_messages_several_messages(client):
+    response = client.post('/messages', json={'sender': 'leifgw', 'recipient': 'kungen', 'content': 'Tjenare kungen!'})
+    response = client.post('/messages', json={'sender': 'leifgw', 'recipient': 'kungen', 'content': 'Svara mig!'})
+
+    response = client.get('/messages?recipient=kungen')
+    assert response.status_code == 200
+    assert len(response.json['messages']) == 2
+
+def test_fetch_messages_custom_index(client):
+    response = client.post('/messages', json={'sender': 'leifgw', 'recipient': 'kungen', 'content': 'Tjenare kungen!'})
+    response = client.post('/messages', json={'sender': 'leifgw', 'recipient': 'kungen', 'content': 'Svara mig!'})
+    response = client.post('/messages', json={'sender': 'leifgw', 'recipient': 'kungen', 'content': 'Du svarar ju inte :('})
+
+    response = client.get('/messages?recipient=kungen&start_index=1&stop_index=3')
+    assert response.status_code == 200
+    assert len(response.json['messages']) == 2
+    assert response.json['messages'][0]['content'] == 'Svara mig!'
+    assert response.json['messages'][1]['content'] == 'Du svarar ju inte :('
+
+def test_fetch_messages_missing_recipient(client):
+    response = client.get('/messages')
+    assert response.status_code == 400
+    assert response.json['error'] == 'Missing recipient parameter'
+
+def test_fetch_messages_negative_indexes(client):
+    response = client.get('/messages?recipient=leifgw&start_index=-1&stop_index=-1')
+    assert response.status_code == 400
+
+def test_fetch_messages_start_index_greater_than_stop_index(client):
+    response = client.get('/messages?recipient=leifgw&start_index=5&stop_index=2')
+    assert response.status_code == 400
