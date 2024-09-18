@@ -19,10 +19,18 @@ python api.py
 
 This will serve the API on `http://localhost:5000/`, instantiating a local sqlite database in `src/instace/messages.db`.
 
-### Option 2 - Docker Container
+### Option 2 - Docker Compose
+
+Alternatively, the application can be built and run from within a container using `docker-compose`:
+
+```bash
+docker-compose up --build
+```
+
+This will build the Docker image and start the container. The API will be available at `http://localhost:5000`. 
 
 ## Documentation
 
-Once the service is running, both API documentation can be found and requests can be made from `http://localhost:5000/apidocs`.
+Once the service is running, both API specification can be found and requests can be made from `http://localhost:5000/apidocs`.
 
-For consistency, information about the endpoints are shown below.
+For consistency, information about the endpoints are also shown below.
