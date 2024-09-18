@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
-from sqlalchemy import desc
+from sqlalchemy import desc, exc
 from flasgger import Swagger
 
 app = Flask(__name__)
@@ -71,10 +71,14 @@ def send_message():
         content=data['content']
     )
 
-    db.session.add(new_message)
-    db.session.commit()
-
-    return jsonify({'message': 'Message sent successfully'}), 201
+    try:
+        db.session.add(new_message)
+        db.session.commit()
+        return jsonify({'message': 'Message sent successfully'}), 201
+    except exc.SQLAlchemyError:
+        db.session.rollback()
+        return jsonify({'error': 'Internal Server Error. Please try again.'}), 500
+    
 
 @app.route('/messages/new', methods=['GET'])
 def fetch_new_messages():
@@ -100,28 +104,31 @@ def fetch_new_messages():
 
     if 'recipient' not in data:
         return jsonify({'error': 'Missing required fields'}), 400
-    
-    messages = Message.query.filter_by(recipient=data['recipient'], is_read=False).all()
+    try: 
+        messages = Message.query.filter_by(recipient=data['recipient'], is_read=False).all()
 
-    # Seralize messages
-    messages_list = [{
-        'id': message.id,
-        'sender': message.sender,
-        'recipient': message.recipient,
-        'content': message.content,
-        'timestamp': message.timestamp,
-        #'is_read': message.is_read -- Not really relevant for this endpoint
-    } for message in messages]
+        # Seralize messages
+        messages_list = [{
+            'id': message.id,
+            'sender': message.sender,
+            'recipient': message.recipient,
+            'content': message.content,
+            'timestamp': message.timestamp,
+            #'is_read': message.is_read -- Not really relevant for this endpoint
+        } for message in messages]
 
-    if not messages_list:
-        return jsonify({'messages': [], "info":f'No new messages found for {data["recipient"]}'}), 200
-    
-    # Mark messages as read
-    for message in messages:
-        message.is_read = True
-        db.session.commit()
-    
-    return jsonify({'messages': messages_list}), 200
+        if not messages_list:
+            return jsonify({'messages': [], "info":f'No new messages found for {data["recipient"]}'}), 200
+        
+        # Mark messages as read
+        for message in messages:
+            message.is_read = True
+            db.session.commit()
+        
+        return jsonify({'messages': messages_list}), 200
+    except exc.SQLAlchemyError:
+        db.session.rollback()
+        return jsonify({'error': 'Internal Server Error. Please try again.'}), 500
 
 @app.route('/messages/<int:id>', methods=['DELETE'])
 def delete_message(id):
@@ -142,23 +149,27 @@ def delete_message(id):
         404:
             description: Message not found.
     """
-    message = db.session.get(Message, id)
+    try: 
+        message = db.session.get(Message, id)
 
-    if message is None:
-        return jsonify({'error': 'Message not found'}), 404
-    
-    message_details = {
-        'id': message.id,
-        'sender': message.sender,
-        'recipient': message.recipient,
-        'content': message.content,
-        'timestamp': message.timestamp
-    }
-    
-    db.session.delete(message)
-    db.session.commit()
+        if message is None:
+            return jsonify({'error': 'Message not found'}), 404
+        
+        message_details = {
+            'id': message.id,
+            'sender': message.sender,
+            'recipient': message.recipient,
+            'content': message.content,
+            'timestamp': message.timestamp
+        }
+        
+        db.session.delete(message)
+        db.session.commit()
 
-    return jsonify({'message': 'Message deleted successfully', "deleted_message": message_details}), 200
+        return jsonify({'message': 'Message deleted successfully', "deleted_message": message_details}), 200
+    except exc.SQLAlchemyError:
+        db.session.rollback()
+        return jsonify({'error': 'Internal Server Error. Please try again.'}), 500
 
  
 # NOTE: Design choice: All messages must exist, or none will be deleted.
@@ -197,18 +208,21 @@ def delete_multiple_messages():
         return jsonify({'error': 'Missing required fields'}), 400
 
     ids = data['ids']
+    try: 
+        messages_to_delete = Message.query.filter(Message.id.in_(ids)).all()
+        found_ids = [message.id for message in messages_to_delete]
+        not_found_ids = list(set(ids) - set(found_ids))
 
-    messages_to_delete = Message.query.filter(Message.id.in_(ids)).all()
-    found_ids = [message.id for message in messages_to_delete]
-    not_found_ids = list(set(ids) - set(found_ids))
+        if not_found_ids:
+            return jsonify({'error': f'Messages not found', 'not_found_ids':f'{not_found_ids}'}), 404
+        
+        Message.query.filter(Message.id.in_(ids)).delete(synchronize_session=False)
+        db.session.commit()
 
-    if not_found_ids:
-        return jsonify({'error': f'Messages not found', 'not_found_ids':f'{not_found_ids}'}), 404
-    
-    Message.query.filter(Message.id.in_(ids)).delete(synchronize_session=False)
-    db.session.commit()
-
-    return jsonify({'message': f'Successfully deleted all messages'}), 200
+        return jsonify({'message': f'Successfully deleted all messages'}), 200
+    except exc.SQLAlchemyError:
+        db.session.rollback()
+        return jsonify({'error': 'Internal Server Error. Please try again.'}), 500
 
 
 @app.route('/messages', methods=['GET'])
@@ -256,22 +270,26 @@ def fetch_messages():
     if start_index > stop_index:
         return jsonify({'error': 'Start index must be less than stop index'}), 400
     
-    query = Message.query.filter_by(recipient=recipient).order_by(desc(Message.timestamp))
-    messages = query.slice(start_index, stop_index).all()
+    try:
+        query = Message.query.filter_by(recipient=recipient).order_by(desc(Message.timestamp))
+        messages = query.slice(start_index, stop_index).all()
 
-    messages_list = [{
-        'id': message.id,
-        'sender': message.sender,
-        'recipient': message.recipient,
-        'content': message.content,
-        'timestamp': message.timestamp,
-    } for message in messages]
+        messages_list = [{
+            'id': message.id,
+            'sender': message.sender,
+            'recipient': message.recipient,
+            'content': message.content,
+            'timestamp': message.timestamp,
+        } for message in messages]
 
-    return jsonify({'messages': messages_list,
-                    'total_messages': len(messages),
-                    'start_index': start_index,
-                    'stop_index': stop_index
-                }), 200
+        return jsonify({'messages': messages_list,
+                        'total_messages': len(messages),
+                        'start_index': start_index,
+                        'stop_index': stop_index
+                    }), 200
+    except exc.SQLAlchemyError:
+        db.session.rollback()
+        return jsonify({'error': 'Internal Server Error. Please try again.'}), 500
 
 
 if __name__ == '__main__':
