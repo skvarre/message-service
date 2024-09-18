@@ -31,7 +31,7 @@ This will build the Docker image and start the container. The API will be availa
 
 ## Documentation
 
-Once the service is running, both API specification can be found and requests can be made from `http://localhost:5000/apidocs`.
+Once the service is running, the API specification can be found at `http://localhost:5000/apidocs`. Requests can also be made directly from the Swagger UI.
 
 For consistency, information about the endpoints are also shown below.
 

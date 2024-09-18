@@ -123,7 +123,6 @@ def fetch_new_messages():
     
     return jsonify({'messages': messages_list}), 200
 
-# TODO: Add message details in response.
 @app.route('/messages/<int:id>', methods=['DELETE'])
 def delete_message(id):
     """
@@ -148,10 +147,18 @@ def delete_message(id):
     if message is None:
         return jsonify({'error': 'Message not found'}), 404
     
+    message_details = {
+        'id': message.id,
+        'sender': message.sender,
+        'recipient': message.recipient,
+        'content': message.content,
+        'timestamp': message.timestamp
+    }
+    
     db.session.delete(message)
     db.session.commit()
 
-    return jsonify({'message': 'Message deleted successfully'}), 200
+    return jsonify({'message': 'Message deleted successfully', "deleted_message": message_details}), 200
 
  
 # NOTE: Design choice: All messages must exist, or none will be deleted.
