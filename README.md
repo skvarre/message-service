@@ -34,8 +34,8 @@ This will build the Docker image and start the container. The API will be availa
 Once the service is running, both API specification can be found and requests can be made from `http://localhost:5000/apidocs`.
 
 For consistency, information about the endpoints are also shown below.
-___
 
+___
 ### POST /messages
 
 - **Description:** Submit a message to a recipient user. 
@@ -58,7 +58,7 @@ curl -X POST 'http://127.0.0.1:5000/messages' \
   "message": "Message sent successfully"
 }
 ```
-
+___
 ### GET /messages/new
 
 - **Description:** Retrieve all new messages for a recipient user.
@@ -84,7 +84,7 @@ curl -X GET 'http://127.0.0.1:5000/messages/new?recipient=Kungen' \
   ]
 }
 ```
-
+___
 ### DELETE /messages/{id}
 
 - **Description:** Delete a message by its ID.
@@ -101,7 +101,7 @@ curl -X DELETE 'http://127.0.0.1:5000/messages/1' \
   "message": "Message deleted successfully"
 }
 ```
-
+___
 ### DELETE /messages
 
 - **Description:** Delete multiple messages for a recipient user.
@@ -122,7 +122,7 @@ curl -X DELETE 'http://127.0.0.1:5000/messages' \
   "message": "Successfully deleted all messages"
 }
 ```
-
+___
 ### GET /messages
 
 - **Description:** Fetches messages to the recipient user, based on start and stop indexes in order of time received, regardless of whether the messages has been read or not.
