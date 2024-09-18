@@ -34,6 +34,7 @@ This will build the Docker image and start the container. The API will be availa
 Once the service is running, both API specification can be found and requests can be made from `http://localhost:5000/apidocs`.
 
 For consistency, information about the endpoints are also shown below.
+___
 
 ### POST /messages
 
