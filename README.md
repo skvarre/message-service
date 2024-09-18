@@ -34,3 +34,125 @@ This will build the Docker image and start the container. The API will be availa
 Once the service is running, both API specification can be found and requests can be made from `http://localhost:5000/apidocs`.
 
 For consistency, information about the endpoints are also shown below.
+
+### POST /messages
+
+- **Description:** Submit a message to a recipient user. 
+- **Method**: `POST`
+- **Endpoint**: `/messages`
+- **cURL Example**:
+```bash
+curl -X POST 'http://127.0.0.1:5000/messages' \
+-H  'accept: application/json' \
+-H  'Content-Type: application/json' \
+-d '{
+    "sender": "LeifGW",
+    "recipient": "Kungen",
+    "content": "Tjenare kungen!"
+}'
+```
+- **Response Sample**:
+```json
+{
+  "message": "Message sent successfully"
+}
+```
+
+### GET /messages/new
+
+- **Description:** Retrieve all new messages for a recipient user.
+- **Method**: `GET`
+- **Endpoint**: `/messages/new`
+- **cURL Example:**
+```bash
+curl -X GET 'http://127.0.0.1:5000/messages/new?recipient=Kungen' \
+-H 'accept: application/json'
+```
+- **Response Sample:**
+```json
+{
+  "messages": 
+  [
+    {
+      "content": "Tjenare kungen!",
+      "id": 1,
+      "recipient": "Kungen",
+      "sender": "LeifGW",
+      "timestamp": "Wed, 18 Sep 2024 11:38:30 GMT"
+    }
+  ]
+}
+```
+
+### DELETE /messages/{id}
+
+- **Description:** Delete a message by its ID.
+- **Method**: `DELETE`
+- **Endpoint**: `/messages`
+- **cURL Example:**
+```bash
+curl -X DELETE 'http://127.0.0.1:5000/messages/1' \
+-H 'accept: application/json'
+```
+- **Response Sample:**
+```json
+{
+  "message": "Message deleted successfully"
+}
+```
+
+### DELETE /messages
+
+- **Description:** Delete multiple messages for a recipient user.
+- **Method**: `DELETE`
+- **Endpoint**: `/messages`
+- **cURL Example:**
+```bash
+curl -X DELETE 'http://127.0.0.1:5000/messages' \
+-H 'accept: application/json' \
+-H 'Content-Type: application/json' \
+-d '{
+    "ids": [2, 3]
+}'
+```
+- **Response Sample:**
+```json
+{
+  "message": "Successfully deleted all messages"
+}
+```
+
+### GET /messages
+
+- **Description:** Fetches messages to the recipient user, based on start and stop indexes in order of time received, regardless of whether the messages has been read or not.
+- **Method**: `GET`
+- **Endpoint**: `/messages`
+- **cURL Example:**
+```bash
+curl -X GET 'http://127.0.0.1:5000/messages?recipient=Kungen&start_index=0&stop_index=2'\
+-H 'accept: application/json'
+```
+- **Response Sample:**
+```json
+{
+  "messages": [
+    {
+      "content": "Ska vi ta en fisketur tro?",
+      "id": 6,
+      "recipient": "Kungen",
+      "sender": "LeifGW",
+      "timestamp": "Wed, 18 Sep 2024 12:08:44 GMT"
+    },
+    {
+      "content": "Tjenare kungen!",
+      "id": 5,
+      "recipient": "Kungen",
+      "sender": "LeifGW",
+      "timestamp": "Wed, 18 Sep 2024 11:48:25 GMT"
+    }
+  ],
+  "start_index": 0,
+  "stop_index": 2,
+  "total_messages": 2
+}
+``` 
