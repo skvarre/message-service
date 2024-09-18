@@ -96,8 +96,10 @@ def test_fetch_messages_custom_index(client):
     response = client.get('/messages?recipient=kungen&start_index=1&stop_index=3')
     assert response.status_code == 200
     assert len(response.json['messages']) == 2
+    
+    # The messages should be fetched in descending order, based on time. 
     assert response.json['messages'][0]['content'] == 'Svara mig!'
-    assert response.json['messages'][1]['content'] == 'Du svarar ju inte :('
+    assert response.json['messages'][1]['content'] == 'Tjenare kungen!'
 
 def test_fetch_messages_missing_recipient(client):
     response = client.get('/messages')
