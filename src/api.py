@@ -27,8 +27,6 @@ class Message(db.Model):
     def __repr__(self):
         return f'<Message(id={self.id}, sender={self.sender}, recipient={self.recipient}, content={self.content}, timestamp={self.timestamp}, is_read={self.is_read})>'
 
-#TODO: Add try-except blocks in all endpoints to catch exceptions and return a 500 status code.
-
 @app.route('/messages', methods=['POST'])
 def send_message():
     """
