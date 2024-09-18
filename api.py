@@ -2,10 +2,18 @@ from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from sqlalchemy import desc
+from flasgger import Swagger
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///messages.db'
 db = SQLAlchemy(app)
+swagger = Swagger(app, template={
+    "info": {
+        "title": "Message Service REST API",
+        "description": "A simple API for sending and fetching messages.",
+        "version": "1.0.0"
+    },
+})
 
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -21,28 +29,29 @@ class Message(db.Model):
 
 #TODO: Add try-except blocks in all endpoints to catch exceptions and return a 500 status code.
 
-# Send a message to a user
 @app.route('/messages', methods=['POST'])
 def send_message():
     """
     Send a message to a user.
-    
     ---
+    tags:
+        - messages
     parameters:
-        - name: sender
-            in: body
+    - in: body
+      name: body
+      required: true
+      description: JSON payload containing the message details.
+      schema:
+        type: object
+        properties:
+          sender:
             type: string
-            required: true
             description: The identifier of the sender user (username).
-        - name: recipient
-            in: body
+          recipient:
             type: string
-            required: true
             description: The identifier of the recipient user (username).
-        - name: content
-            in: body
+          content:
             type: string
-            required: true
             description: The content of the message.
     responses:
         201:
@@ -67,22 +76,22 @@ def send_message():
 
     return jsonify({'message': 'Message sent successfully'}), 201
 
-# Get NEW messages
 @app.route('/messages/new', methods=['GET'])
 def fetch_new_messages():
     """
     Fetch new messages for a user.
-
     ---
+    tags:
+        - messages
     parameters:
         - name: recipient
-            in: query
-            type: string
-            required: true
-            description: The identifier of the recipient user (username).
+          in: query
+          type: string
+          required: true
+          description: The identifier of the recipient user (username).
     responses:
         200:
-            description: A list of new unfetched messages for the recipient user if existent.
+            description: A list of new unfetched messages for the recipient user (if existent).
         400:
             description: Missing required fields.
     """
@@ -113,19 +122,20 @@ def fetch_new_messages():
     
     return jsonify({'messages': messages_list}), 200
 
-# Delete message
+# TODO: Add message details in response.
 @app.route('/messages/<int:id>', methods=['DELETE'])
 def delete_message(id):
     """
-    Delete a message by its ID.
-    
+    Delete a single message by its ID.
     ---
+    tags:
+        - messages
     parameters:
-        - name: id
-            in: path
-            type: integer
-            required: true
-            description: The identifier of the message to be deleted.
+      - name: id
+        in: path
+        type: integer
+        required: true
+        description: The identifier of the message to be deleted.
     responses:
         200:
             description: Message deleted successfully.
@@ -142,27 +152,36 @@ def delete_message(id):
 
     return jsonify({'message': 'Message deleted successfully'}), 200
 
-# Delete multiple messages. 
-# Design choice: All messages must exist, or none will be deleted.
+ 
+# NOTE: Design choice: All messages must exist, or none will be deleted.
 @app.route('/messages', methods=['DELETE'])
 def delete_multiple_messages():
     """
     Delete multiple messages by their IDs.
-    
+    Only deletes messages if all given IDs exist.
     ---
+    tags:
+        - messages
     parameters:
-        - name: ids
-            in: body
-            type: list
-            required: true
-            description: A list of message IDs to be deleted.
+    - in: body
+      name: body
+      required: true
+      description: JSON payload containing the IDs.
+      schema:
+        type: object
+        properties:
+          ids:
+            type: array
+            items:
+                type: integer
+            description: A string representation of a list of IDs (e.g., "[1,2]").
     responses:
         200:
             description: Messages deleted successfully.
         400:
             description: Missing required fields.
         404:
-            description: Message(s) not found.
+            description: One or more messages were not found.
     """
     data = request.get_json()
 
@@ -184,29 +203,29 @@ def delete_multiple_messages():
     return jsonify({'message': f'Successfully deleted all messages'}), 200
 
 
-# Get ALL messages.
 @app.route('/messages', methods=['GET'])
 def fetch_messages():
     """
     Fetch multiple messages for a user.
-
     ---
+    tags:
+        - messages
     parameters:
-        - name: recipient
-            in: query
-            type: string
-            required: true
-            description: The identifier of the recipient user (username).
-        - name: start_index
-            in: query
-            type: integer
-            required: false
-            description: The start index of the messages to fetch.
-        - name: stop_index
-            in: query
-            type: integer
-            required: false
-            description: The stop index of the messages to fetch.
+      - name: recipient
+        in: query
+        type: string
+        required: true
+        description: The identifier of the recipient user (username).
+      - name: start_index
+        in: query
+        type: integer
+        required: false
+        description: The start index of the messages to fetch.
+      - name: stop_index
+        in: query
+        type: integer
+        required: false
+        description: The stop index of the messages to fetch.
     responses:
         200:
             description: A list of messages for the recipient user (if existent).
@@ -237,7 +256,7 @@ def fetch_messages():
     } for message in messages]
 
     return jsonify({'messages': messages_list,
-                    'total_messages': query.count(),
+                    'total_messages': 0 if len(messages) == 0 else query.count(),
                     'start_index': start_index,
                     'stop_index': stop_index
                 }), 200
