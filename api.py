@@ -20,7 +20,7 @@ class Message(db.Model):
     sender = db.Column(db.String(100), nullable=False)
     recipient = db.Column(db.String(100), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.now())
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.now)
     is_read = db.Column(db.Boolean, nullable=False, default=False)
 
     # For debugging purposes
@@ -80,6 +80,7 @@ def send_message():
 def fetch_new_messages():
     """
     Fetch new messages for a user.
+    Only fetches messages that have not been read yet.
     ---
     tags:
         - messages
@@ -207,6 +208,8 @@ def delete_multiple_messages():
 def fetch_messages():
     """
     Fetch multiple messages for a user.
+    Fetches messages based on the recipient user and the start and stop indexes in descending order, regardless of whether the messages has been read or not.
+    If stop_index is greater than the total number of messages, the response will contain all messages from start_index to the last message.
     ---
     tags:
         - messages
@@ -220,12 +223,14 @@ def fetch_messages():
         in: query
         type: integer
         required: false
-        description: The start index of the messages to fetch.
+        default: 0
+        description: The start index of the messages to fetch (inclusive).
       - name: stop_index
         in: query
         type: integer
         required: false
-        description: The stop index of the messages to fetch.
+        default: 50
+        description: The stop index of the messages to fetch (exclusive).
     responses:
         200:
             description: A list of messages for the recipient user (if existent).
@@ -256,7 +261,7 @@ def fetch_messages():
     } for message in messages]
 
     return jsonify({'messages': messages_list,
-                    'total_messages': 0 if len(messages) == 0 else query.count(),
+                    'total_messages': len(messages),
                     'start_index': start_index,
                     'stop_index': stop_index
                 }), 200
