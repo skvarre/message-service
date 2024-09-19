@@ -17,7 +17,7 @@ The API service can be started by running `api.py` in the `src/` directory.
 python src/api.py
 ```
 
-This will serve the API on `http://localhost:5000/`, instantiating a local sqlite database in `src/instace/messages.db`.
+This will serve the API on `http://localhost:5000/`, instantiating a local sqlite database in `instace/messages.db`.
 
 ### Option 2 - Docker Compose
 
