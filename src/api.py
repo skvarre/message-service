@@ -27,6 +27,16 @@ class Message(db.Model):
     def __repr__(self):
         return f'<Message(id={self.id}, sender={self.sender}, recipient={self.recipient}, content={self.content}, timestamp={self.timestamp}, is_read={self.is_read})>'
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'sender': self.sender,
+            'recipient': self.recipient,
+            'content': self.content,
+            'timestamp': self.timestamp,
+            'is_read': self.is_read
+        }
+
 @app.route('/messages', methods=['POST'])
 def send_message():
     """
@@ -106,14 +116,9 @@ def fetch_new_messages():
         messages = Message.query.filter_by(recipient=data['recipient'], is_read=False).all()
 
         # Seralize messages
-        messages_list = [{
-            'id': message.id,
-            'sender': message.sender,
-            'recipient': message.recipient,
-            'content': message.content,
-            'timestamp': message.timestamp,
-            #'is_read': message.is_read -- Not really relevant for this endpoint
-        } for message in messages]
+        messages_list = [message.to_dict() for message in messages] 
+        for message in messages_list:
+            message.pop('is_read') # Not really relevant for this response. 
 
         if not messages_list:
             return jsonify({'messages': [], "info":f'No new messages found for {data["recipient"]}'}), 200
@@ -153,13 +158,7 @@ def delete_message(id):
         if message is None:
             return jsonify({'error': 'Message not found'}), 404
         
-        message_details = {
-            'id': message.id,
-            'sender': message.sender,
-            'recipient': message.recipient,
-            'content': message.content,
-            'timestamp': message.timestamp
-        }
+        message_details = message.to_dict()
         
         db.session.delete(message)
         db.session.commit()
@@ -272,13 +271,7 @@ def fetch_messages():
         query = Message.query.filter_by(recipient=recipient).order_by(desc(Message.timestamp))
         messages = query.slice(start_index, stop_index).all()
 
-        messages_list = [{
-            'id': message.id,
-            'sender': message.sender,
-            'recipient': message.recipient,
-            'content': message.content,
-            'timestamp': message.timestamp,
-        } for message in messages]
+        messages_list = [message.to_dict() for message in messages]
 
         return jsonify({'messages': messages_list,
                         'total_messages': len(messages),

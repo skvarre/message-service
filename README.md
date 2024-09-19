@@ -14,7 +14,7 @@ pip install -r requirements.txt
 The API service can be started by running `api.py` in the `src/` directory. 
 
 ```bash
-python api.py
+python src/api.py
 ```
 
 This will serve the API on `http://localhost:5000/`, instantiating a local sqlite database in `src/instace/messages.db`.
